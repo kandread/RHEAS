@@ -56,13 +56,13 @@ def runVIC(dbname, options):
     models.run(vicexe)
     models.setDates(startyear, startmonth, startday, endyear, endmonth, endday)
     models.save(saveto, savevars)
-    # for varname in savevars:
-    #     raster.stddev(models.dbname, "{0}.{1}".format(
-    #         models.name, varname))
-    #     raster.mean(models.dbname, "{0}.{1}".format(
-    #         models.name, varname))
-    # for e in range(nens):
-    #     shutil.rmtree(models[e].model_path)
+    for varname in savevars:
+        raster.stddev(models.dbname, "{0}.{1}".format(
+            models.name, varname))
+        raster.mean(models.dbname, "{0}.{1}".format(
+            models.name, varname))
+    for e in range(nens):
+        shutil.rmtree(models[e].model_path)
 
 
 def initializeVIC(model, basin, res, voptions, vicexe):
@@ -136,6 +136,7 @@ def runDSSAT(dbname, options):
             model = mod.Model(dbname, name, res, startyear, startmonth, startday,
                               endyear, endmonth, endday, nens, options['vic'], shapefile, assimilate)
             model.run()
+            shutil.rmtree(model.path)
 
 
 def execute(dbname, options):

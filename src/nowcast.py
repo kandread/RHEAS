@@ -188,6 +188,7 @@ def runDSSAT(dbname, options):
             model = mod.Model(dbname, name, res, startyear, startmonth, startday,
                               endyear, endmonth, endday, nens, options['vic'], shapefile, assimilate)
             model.run()
+            shutil.rmtree(model.path)
 
 
 def execute(dbname, options):
