@@ -72,7 +72,7 @@ def _calcSuctionHead(model, ensemble, nlayers=3):
     """Calculate soil suction from soil moisture using the Clapp
     and Hornberger (1978) model and parameters."""
     if bool(ensemble):
-        equery = "and ensemble={0}".format(ensemble)
+        equery = "and (ensemble={0} or ensemble=0)".format(ensemble)
     else:
         equery = ""
     Ksat = np.array([63.36, 56.16, 12.49, 2.59, 2.5, 2.27, 0.612, 0.882, 0.781, 0.371, 0.461])
@@ -124,7 +124,7 @@ def _calcSuctionHead(model, ensemble, nlayers=3):
 def _calcFpar(model, ensemble):
     """Retrieve the Photosynthetically Active Radiation from the model simulation."""
     if bool(ensemble):
-        equery = "where ensemble={0}".format(ensemble)
+        equery = "where (ensemble={0} or ensemble=0)".format(ensemble)
     else:
         equery = ""
     db = dbio.connect(model.dbname)
@@ -179,7 +179,7 @@ def calcSRI(duration, model, ensemble):
     *duration*."""
     log = logging.getLogger(__name__)
     if bool(ensemble):
-        equery = "and ensemble={0}".format(ensemble)
+        equery = "and (ensemble={0} or ensemble=0)".format(ensemble)
     else:
         equery = ""
     startdate = datetime(model.startyear + model.skipyear, model.startmonth, model.startday)
@@ -222,7 +222,7 @@ def calcSPI(duration, model, ensemble):
     *duration*."""
     log = logging.getLogger(__name__)
     if bool(ensemble):
-        equery = "and ensemble={0}".format(ensemble)
+        equery = "and (ensemble={0} or ensemble=0)".format(ensemble)
     else:
         equery = ""
     startdate = datetime(model.startyear + model.skipyear, model.startmonth, model.startday)
@@ -262,7 +262,7 @@ def calcSPI(duration, model, ensemble):
 def calcSeverity(model, ensemble, varname="soil_moist"):
     """Calculate drought severity from *climatology* table stored in database."""
     if bool(ensemble):
-        equery = "where ensemble={0}".format(ensemble)
+        equery = "where (ensemble={0} or ensemble=0)".format(ensemble)
     else:
         equery = ""
     db = dbio.connect(model.dbname)
@@ -290,7 +290,7 @@ def calcDrySpells(model, ensemble, droughtfun=np.mean, duration=14, recovduratio
     """Calculate maps of number of dry spells during simulation period."""
     # FIXME: Currently only uses precipitation to identify dry spells. Need to change it to also use soil moisture and runoff
     if bool(ensemble):
-        equery = "and ensemble={0}".format(ensemble)
+        equery = "and (ensemble={0} or ensemble=0)".format(ensemble)
     else:
         equery = ""
     db = dbio.connect(model.dbname)
@@ -322,7 +322,7 @@ def calcDrySpells(model, ensemble, droughtfun=np.mean, duration=14, recovduratio
 def calcSMDI(model, ensemble):
     """Calculate Soil Moisture Deficit Index (Narasimhan & Srinivasan, 2005)."""
     if bool(ensemble):
-        equery = "and ensemble={0}".format(ensemble)
+        equery = "and (ensemble={0} or ensemble=0)".format(ensemble)
     else:
         equery = ""
     db = dbio.connect(model.dbname)
