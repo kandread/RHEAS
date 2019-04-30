@@ -32,10 +32,10 @@ def download(dbname, dts, bbox=None, enhanced=False):
     log = logging.getLogger(__name__)
     if enhanced:
         res = 0.09
-        url = "https://n5eil01u.ecs.nsidc.org/SMAP/SPL3SMP_E.001"
+        url = "https://n5eil01u.ecs.nsidc.org/SMAP/SPL3SMP_E.002"
     else:
         res = 0.36
-        url = "https://n5eil01u.ecs.nsidc.org/DP4/SMAP/SPL3SMP.004"
+        url = "https://n5eil01u.ecs.nsidc.org/DP4/SMAP/SPL3SMP.005"
     for dt in [dts[0] + timedelta(tt) for tt in range((dts[-1] - dts[0]).days + 1)]:
         try:
             outpath, fname = earthdata.download("{0}/{1}".format(url, dt.strftime("%Y.%m.%d")), "SMAP_L3_SM_P_\S*.h5")
