@@ -10,12 +10,15 @@
 from soilmoist import Soilmoist
 import dbio
 import os
+import logging
+import pysftp
+import re
+import tempfile
 import netCDF4 as netcdf
 from scipy.spatial import KDTree
 import numpy as np
 from datetime import datetime, timedelta
 import datasets
-import logging
 
 
 table = "soilmoist.smos"
@@ -38,43 +41,50 @@ def regridNearestNeighbor(lat, lon, res):
     return pos, grid_lat, grid_lon
 
 
-def download(dbname, dt, bbox=None):
+def download(dbname, dts, bbox=None):
     """Downloads SMOS soil mositure data for a set of dates *dt*
     and imports them into the PostGIS database *dbname*. Optionally
     uses a bounding box to limit the region with [minlon, minlat, maxlon, maxlat]."""
     log = logging.getLogger(__name__)
     res = 0.25
-    url = "http://rheas:rheasjpl@cp34-bec.cmima.csic.es/thredds/dodsC/NRTSM001D025A_ALL"
-    f = netcdf.Dataset(url)
-    lat = f.variables['lat'][::-1]  # swap latitude orientation to northwards
-    lon = f.variables['lon'][:]
-    i1, i2, j1, j2 = datasets.spatialSubset(lat, lon, res, bbox)
-    smi1 = len(lat) - i2 - 1
-    smi2 = len(lat) - i1 - 1
-    lat = lat[i1:i2]
-    lon = lon[j1:j2]
-    t0 = datetime(2010, 1, 12)  # initial date of SMOS data
-    t1 = (dt[0] - t0).days
-    if t1 < 0:
-        log.warning("Reseting start date to {0}".format(t0.strftime("%Y-%m-%d")))
-        t1 = 0
-    t2 = (dt[-1] - t0).days + 1
-    nt, _, _ = f.variables['SM'].shape
-    if t2 > nt:
-        t2 = nt
-        log.warning("Reseting end date to {0}".format((t0 + timedelta(t2)).strftime("%Y-%m-%d")))
-    ti = range(t1, t2)
-    sm = f.variables['SM'][ti, smi1:smi2, j1:j2]
-    sm = sm[:, ::-1, :]  # flip latitude dimension in data array
-    # FIXME: Use spatially variable observation error
-    # smv = f.variables['VARIANCE_SM'][ti, i1:i2, j1:j2][:, ::-1, :]
-    pos, smlat, smlon = regridNearestNeighbor(lat, lon, res)
-    for tj in range(sm.shape[0]):
-        smdata = sm[tj, :, :].ravel()[pos].reshape((len(smlat), len(smlon)))
-        filename = dbio.writeGeotif(smlat, smlon, res, smdata)
-        t = t0 + timedelta(ti[tj])
-        dbio.ingest(dbname, filename, t, table, False)
-        os.remove(filename)
+    username = raw_input("Type in your BEC username to download SMOS data: ")
+    password = raw_input("Type in your BEC password to download SMOS data: ")
+    cnopts = pysftp.CnOpts()
+    cnopts.hostkeys = None
+    sftp = pysftp.Connection('becftp.icm.csic.es', username=username,
+                             password=password, port=27500, cnopts=cnopts)
+    for dt in [dts[0] + timedelta(ti) for ti in range((dts[-1] - dts[0]).days+1)]:
+        with sftp.cd("data/LAND/SM/SMOS/GLOBAL/v3.0/L3/daily/ASC/{0}".format(dt.year)):
+            filenames = sftp.listdir()
+        regex = re.compile("BEC.*{0}.*nc".format(dt.strftime("%Y%m%d")))
+        filename = [f for f in filenames if regex.match(f)]
+        if filename:
+            filename = filename[0]
+            print(filename)
+            datapath = tempfile.mkdtemp()
+            os.chdir(datapath)
+            sftp.get("data/LAND/SM/SMOS/GLOBAL/v3.0/L3/daily/ASC/{0}/{1}".format(dt.year, filename))
+            f = netcdf.Dataset(filename)
+            lat = f.variables['lat'][::-1]  # swap latitude orientation to northwards
+            lon = f.variables['lon'][:]
+            i1, i2, j1, j2 = datasets.spatialSubset(lat, lon, res, bbox)
+            smi1 = len(lat) - i2 - 1
+            smi2 = len(lat) - i1 - 1
+            lat = lat[i1:i2]
+            lon = lon[j1:j2]
+            t = f.variables['time']
+            t = netcdf.num2date(t[-1], t.units)
+            sm = f.variables['SM'][-1, smi1:smi2, j1:j2]
+            sm = sm[::-1, :]  # flip latitude dimension in data array
+            # FIXME: Use spatially variable observation error
+            # smv = f.variables['VARIANCE_SM'][0, i1:i2, j1:j2][::-1, :]
+            pos, smlat, smlon = regridNearestNeighbor(lat, lon, res)
+            smdata = sm.ravel()[pos].reshape((len(smlat), len(smlon)))
+            filename = dbio.writeGeotif(smlat, smlon, res, smdata)
+            dbio.ingest(dbname, filename, t, table, False)
+            os.remove(filename)
+        else:
+            log.warning("SMOS data not available for {0}. Skipping download!".format(dt.strftime("%Y%m%d")))
 
 
 class Smos(Soilmoist):
