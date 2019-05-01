@@ -546,7 +546,9 @@ class DSSAT(object):
             gid = geom[0]
             if cropfract[gid] >= crop_threshold:
                 self.setupModelInstance(geom, dssatexe)
+        pwd = os.getcwd()
         for k in self.modelpaths:
             modelpath = self.modelpaths[k]
             self.runModelInstance(modelpath, dssatexe)
         self.save()
+        os.chdir(pwd)
