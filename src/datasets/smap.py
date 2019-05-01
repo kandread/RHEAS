@@ -72,5 +72,5 @@ class Smap(Soilmoist):
         """Initialize SMAP soil moisture object."""
         super(Smap, self).__init__(uncert)
         self.res = 0.36
-        self.stddev = 0.001
+        self.stddev = 0.03
         self.tablename = "soilmoist.smap"
