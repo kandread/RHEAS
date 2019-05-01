@@ -182,6 +182,31 @@ class Ensemble:
                     os.makedirs(saveto)
                 model.save(saveto + "/{0}".format(e + 1), args, False)
 
+    def initialize(self, method, basin, options):
+        """Initialize model ensemble (spinup) and create state files."""
+        vicexe = "{0}/vicNl".format(rpath.bins)
+        self.writeParamFiles(savestate=True)
+        self.writeSoilFiles(basin)
+        self.writeForcings(method, options)
+        self.run(vicexe)
+        statefiles = ["{0}/{1}".format(model.model_path, model.statefile) for model in self.models]
+        return statefiles
+
+    def updateStateFiles(self, data, alat, alon, agid):
+        """Update initial state files with *data*."""
+        _, vegparam, snowbands = self.models[0].paramFromDB()
+        veg = state.readVegetation("{0}/{1}".format(rpath.data, vegparam))
+        bands, _ = state.readSnowbands("{0}/{1}".format(rpath.data, snowbands))
+        for e, statefile in enumerate(self.statefiles):
+            states, nlayer, nnodes, dateline = state.readStateFile(statefile)
+            for var in data:
+                x = state.readVariable(self.models[e], states, alat[var], alon[
+                                       var], veg, bands, nlayer, var)
+
+                states = state.updateVariable(self.models[e], states, x, data[var][:, e], alat[
+                                              var], alon[var], agid, veg, bands, nlayer, var)
+            state.writeStateFile(statefile, states, "{0}\n{1} {2}".format(dateline.strip(), nlayer, nnodes))
+
     def run(self, vicexe):
         """Run ensemble of VIC models using multi-threading."""
         procs = [Process(target=self.models[e].run, args=(vicexe,))
