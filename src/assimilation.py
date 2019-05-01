@@ -18,18 +18,18 @@ import dbio
 import logging
 
 
-def observationDates(obsnames, dbname, startyear, startmonth, startday, endyear, endmonth, endday, update):
+def observationDates(obsnames, dbname, startyear, startmonth, startday, endyear, endmonth, endday):
     """Return dates when observation *obsname* is available during the
     simulation period."""
-    if update is not None and isinstance(update, str):
-        if update.find("week") >= 0:
-            update = 7
-        elif update.find("month") >= 0:
-            update = 30
-        else:
-            update = -1
-    else:
-        update = 1
+    # if update is not None and isinstance(update, str):
+    #     if update.find("week") >= 0:
+    #         update = 7
+    #     elif update.find("month") >= 0:
+    #         update = 30
+    #     else:
+    #         update = -1
+    # else:
+    #     update = 1
     dates = []
     db = dbio.connect(dbname)
     cur = db.cursor()
@@ -44,13 +44,13 @@ def observationDates(obsnames, dbname, startyear, startmonth, startday, endyear,
         results = cur.fetchall()
         for ri, r in enumerate(results):
             if not r[0] in dates:
-                if isinstance(update, date) and r[0] is update:
-                    dates.append(r[0])
-                elif isinstance(update, int):
-                    if (ri > 0 and (r[0] - dates[-1]).days >= update) or ri < 1:
-                        dates.append(r[0])
-                else:
-                    dates.append(r[0])
+                # if isinstance(update, date) and r[0] is update:
+                #     dates.append(r[0])
+                # elif isinstance(update, int):
+                #     if (ri > 0 and (r[0] - dates[-1]).days >= update) or ri < 1:
+                #         dates.append(r[0])
+                # else:
+                dates.append(r[0])
     dates.sort()
     for dt in [date(startyear, startmonth, startday), date(endyear, endmonth, endday)]:
         if dt in dates:

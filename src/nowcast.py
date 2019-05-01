@@ -15,6 +15,7 @@ import tempfile
 import shutil
 from assimilation import assimilate, observationDates
 from datetime import date, timedelta
+from dateutil.relativedelta import relativedelta
 import rpath
 import raster
 import dbio
@@ -80,7 +81,6 @@ def runDeterministicVIC(dbname, options):
 
 
 def runEnsembleVIC(dbname, options):
-    """Driver function for performing a VIC nowcast simulation."""
     res = config.getResolution(options['nowcast'])
     name = options['nowcast']['name'].lower()
     vicexe = "{0}/vicNl".format(rpath.bins)
@@ -92,71 +92,58 @@ def runEnsembleVIC(dbname, options):
         int, options['nowcast']['enddate'].split('-'))
     precipdatasets = options['vic']['precip'].split(",")
     savestate, _ = _saveState(options['vic'])
+    init, statefile = _initialize(options['vic'])
     if 'ensemble size' in options['vic']:
         nens = int(options['vic']['ensemble size'])
+        method = "esp"
     elif 'observations' in options['vic']:
         nens = 20
+        method = "esp"
     else:
         nens = len(precipdatasets)
+        method = "determ"
     models = ensemble.Ensemble(nens, dbname, res, startyear,
                                startmonth, startday, endyear, endmonth, endday, name)
-    if 'initialize' in options['vic'] and options['vic']['initialize']:
-        init_method = options['vic']['initialize']
-        if isinstance(init_method, bool):
-            init_method = "determ"
-        models.initialize(options, basin, init_method, vicexe)
-    else:
-        models.writeSoilFiles(basin)
     if 'observations' in options['vic']:
-        method = "random"
+        sdate = date(startyear, startmonth, startday) - relativedelta(months=3)
+        models.setDates(sdate.year, sdate.month, sdate.day, startyear, startmonth, startday)
+        models.statefiles = models.initialize("esp", basin, options)
         obsnames = options['vic']['observations'].split(",")
-        if 'update' in options['vic']:
-            update = options['vic']['update']
-        else:
-            update = None
-        updateDates = observationDates(
-            obsnames, dbname, startyear, startmonth, startday, endyear, endmonth, endday, update)
+        updateDates = observationDates(obsnames, dbname, startyear, startmonth, startday, endyear, endmonth, endday)
         t0 = date(startyear, startmonth, startday)
         updateDates += [date(endyear, endmonth, endday)]
         for t in updateDates:
-            if t0 == date(startyear, startmonth, startday):
-                overwrite = True
-            else:
-                overwrite = False
-            ndays = (date(t.year, t.month, t.day) - t0).days
-            t1 = t + timedelta(1)
-            models.setDates(t.year, t.month, t.day, t1.year, t1.month, t1.day)
-            models.initialize(options, basin, method, vicexe, saveindb=True,
-                              saveto=saveto, saveargs=savevars, initdays=ndays, overwrite=overwrite)
-            data, alat, alon, agid = assimilate(options, date(
-                models.startyear, models.startmonth, models.startday), models)
-            db = dbio.connect(models.dbname)
-            cur = db.cursor()
-            sql = "select tablename from pg_tables where schemaname='{0}'".format(
-                models.name)
-            cur.execute(sql)
-            tables = [tbl[0] for tbl in cur.fetchall() if tbl[0] != "dssat"]
-            for tbl in tables:
-                sql = "delete from {0}.{1} where fdate=date '{2}-{3}-{4}'".format(
-                    models.name, tbl, t.year, t.month, t.day)
-            cur.close()
-            db.close()
+            models.setDates(t0.year, t0.month, t0.day, t.year, t.month, t.day)
+            models.writeParamFiles(savestate=True)
+            models.writeSoilFiles(basin)
+            models.writeForcings(method, options)
+            models.run(vicexe)
+            models.statefiles = ["{0}/{1}".format(model.model_path, model.statefile) for model in models]
+            t0 = t
+            data, alat, alon, agid = assimilate(options, t, models)
             if bool(data):
                 models.updateStateFiles(data, alat, alon, agid)
-            t0 = date(t.year, t.month, t.day)
+            models.save(saveto, savevars)
+            db = dbio.connect(models.dbname)
+            cur = db.cursor()
+            sql = "select tablename from pg_tables where schemaname='{0}' and tablename!='dssat'".format(models.name)
+            cur.execute(sql)
+            for tbl in cur.fetchall():
+                dbio.deleteRasters(models.dbname, "{0}.{1}".format(models.name, tbl[0]), t)
     else:
-        method = "random"
-        t = date(endyear, endmonth, endday)
-        t1 = t + timedelta(1)
-        models.setDates(t.year, t.month, t.day, t1.year, t1.month, t1.day)
-        ndays = (t - date(startyear, startmonth, startday)).days
-        models.initialize(options, basin, method, vicexe, saveindb=True,
-                          saveto=saveto, saveargs=savevars, initdays=ndays)
+        statefile = models[0].stateFile()
+        models.writeParamFiles(statefile=statefile)
+        models.writeSoilFiles(basin)
+        models.writeForcings(method, options)
+        models.run(vicexe)
+        models.save(saveto, savevars)
     for varname in savevars:
         raster.stddev(models.dbname, "{0}.{1}".format(
             models.name, varname))
-    for model in models:
-        shutil.rmtree(model.model_path)
+        raster.mean(models.dbname, "{0}.{1}".format(
+            models.name, varname))
+    for e in range(nens):
+        shutil.rmtree(models[e].model_path)
 
 
 def runDSSAT(dbname, options):
