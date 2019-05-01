@@ -82,9 +82,21 @@ class Ensemble:
             self._ESP(options)
         elif method.lower() == "nmme":
             self.__fromDataset("nmme", options)
+        elif method.lower() == "determ":
+            self._determ(options)
         else:
             log.error("No appropriate method for generating meteorological forecast ensemble, exiting!")
             sys.exit()
+
+    def _determ(self, options):
+        """Write forcings by querying from the database."""
+        precip_ds = [random.choice(options['vic']['precip'].split(",")).strip() for _ in range(self.nens)]
+        for e in range(self.nens):
+            model = self.models[e]
+            opts = {k: options['vic'][k] for k in ['temperature', 'wind']}
+            opts['precip'] = precip_ds[e]
+            prec, tmax, tmin, wind = model.getForcings(opts)
+            model.writeForcings(prec, tmax, tmin, wind)
 
     def __fromDataset(self, dataset, options):
         """Generate and write forcings by using a dataset-specific function."""
