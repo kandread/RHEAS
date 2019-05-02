@@ -126,7 +126,7 @@ def runEnsembleVIC(dbname, options):
             models.save(saveto, savevars)
             db = dbio.connect(models.dbname)
             cur = db.cursor()
-            sql = "select tablename from pg_tables where schemaname='{0}' and tablename!='dssat'".format(models.name)
+            sql = "select tablename from pg_tables where schemaname='{0}' and tablename!='dssat' and tablename!='basin'".format(models.name)
             cur.execute(sql)
             for tbl in cur.fetchall():
                 dbio.deleteRasters(models.dbname, "{0}.{1}".format(models.name, tbl[0]), t)
