@@ -193,7 +193,7 @@ def calcSRI(duration, model, ensemble):
     cur.execute(sql)
     nt = cur.fetchone()[0]
     ndays = (enddate - dstartdate).days + 1
-    if duration < 1 or ndays > nt:
+    if duration < 1 or (ndays > nt and nt < duration * 30):
         log.warning("Cannot calculate SRI with {0} months duration.".format(duration))
         sri = None
     else:
@@ -237,7 +237,7 @@ def calcSPI(duration, model, ensemble):
     nt = cur.fetchone()[0]
     ndays = (enddate - dstartdate).days + 1
     # tablename = "precip."+model.precip
-    if duration < 1 or ndays > nt:
+    if duration < 1 or (ndays > nt and nt < duration * 30):
         log.warning("Cannot calculate SPI with {0} months duration.".format(duration))
         spi = None
     else:
