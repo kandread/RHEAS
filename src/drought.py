@@ -11,7 +11,7 @@ import numpy as np
 from dateutil.relativedelta import relativedelta
 import scipy.stats as stats
 from datetime import date, datetime
-import pandas
+import pandas as pd
 import dbio
 import logging
 
@@ -95,7 +95,7 @@ def _calcSuctionHead(model, ensemble, nlayers=3):
         results = cur.fetchall()
         data = np.array([np.array(r[1]).ravel() for r in results])
         i = np.where(np.not_equal(data[0, :], None))[0]
-        sm = pandas.DataFrame(data[:, i], index=np.array([r[0] for r in results], dtype='datetime64'), columns=range(len(i)))
+        sm = pd.DataFrame(data[:, i], index=np.array([r[0] for r in results], dtype='datetime64'), columns=range(len(i)))
         pfz = np.zeros(sm[st:et].shape)
         ii, jj = np.unravel_index(i, np.array(results[0][1]).shape)
         for j in sm.columns:
@@ -135,7 +135,7 @@ def _calcFpar(model, ensemble):
         results = cur.fetchall()
         data = np.array([np.array(r[1]).ravel() for r in results])
         i = np.where(np.not_equal(data[0, :], None))[0]
-        fpar = pandas.DataFrame(data[:, i], index=np.array([r[0] for r in results], dtype='datetime64'), columns=range(len(i)))
+        fpar = pd.DataFrame(data[:, i], index=np.array([r[0] for r in results], dtype='datetime64'), columns=range(len(i)))
         d = fpar.index.day - np.clip((fpar.index.day-1) // 10, 0, 2)*10 - 1
         date = fpar.index.values - np.array(d, dtype='timedelta64[D]')
         fpar_dekad = fpar.groupby(date, axis=0).apply(np.mean)
@@ -204,7 +204,7 @@ def calcSRI(duration, model, ensemble):
         results = cur.fetchall()
         data = np.array([np.array(r[1]).ravel() for r in results])
         i = np.where(np.not_equal(data[0, :], None))[0]
-        p = pandas.DataFrame(data[:, i], index=np.array([r[0] for r in results], dtype='datetime64'), columns=range(len(i)))
+        p = pd.DataFrame(data[:, i], index=np.array([r[0] for r in results], dtype='datetime64'), columns=range(len(i)))
         t = np.where(p.index == startdate)[0][0]
         pm = p.rolling(duration * 30).mean()  # assume each month is 30 days
         g = [stats.gamma.fit(pm[j][duration * 30:]) for j in pm.columns]
@@ -246,7 +246,7 @@ def calcSPI(duration, model, ensemble):
         results = cur.fetchall()
         data = np.array([np.array(r[1]).ravel() for r in results])
         i = np.where(np.not_equal(data[0, :], None))[0]
-        p = pandas.DataFrame(data[:, i], index=np.array([r[0] for r in results], dtype='datetime64'), columns=range(len(i)))
+        p = pd.DataFrame(data[:, i], index=np.array([r[0] for r in results], dtype='datetime64'), columns=range(len(i)))
         t = np.where(p.index == startdate)[0][0]
         pm = p.rolling(duration * 30).mean()  # assume each month is 30 days
         g = [stats.gamma.fit(pm[j][duration * 30:]) for j in pm.columns]
@@ -275,7 +275,7 @@ def calcSeverity(model, ensemble, varname="soil_moist"):
     results = cur.fetchall()
     data = np.array([np.array(r[1]).ravel() for r in results])
     i = np.where(np.not_equal(data[0, :], None))[0]
-    p = pandas.DataFrame(data[:, i], index=np.array([r[0] for r in results], dtype='datetime64'), columns=range(len(i)))
+    p = pd.DataFrame(data[:, i], index=np.array([r[0] for r in results], dtype='datetime64'), columns=range(len(i)))
     p = p.rolling('10D').mean()  # calculate percentiles with dekad rolling mean
     st = "{0}-{1}-{2}".format(model.startyear, model.startmonth, model.startday)
     et = "{0}-{1}-{2}".format(model.endyear, model.endmonth, model.endday)
@@ -300,7 +300,7 @@ def calcDrySpells(model, ensemble, droughtfun=np.mean, duration=14, recovduratio
     results = cur.fetchall()
     data = np.array([np.array(r[1]).ravel() for r in results])
     i = np.where(np.not_equal(data[0, :], None))[0]
-    p = pandas.DataFrame(data[:, i], index=np.array([r[0] for r in results], dtype='datetime64'), columns=range(len(i)))
+    p = pd.DataFrame(data[:, i], index=np.array([r[0] for r in results], dtype='datetime64'), columns=range(len(i)))
     cur.close()
     db.close()
     ndroughts = np.zeros(p.values.shape)
@@ -332,20 +332,19 @@ def calcSMDI(model, ensemble):
     results = cur.fetchall()
     data = np.array([np.array(r[1]).ravel() for r in results])
     i = np.where(np.not_equal(data[0, :], None))[0]
-    clim = pandas.DataFrame(data[:, i], index=np.array([r[0] for r in results], dtype='datetime64'), columns=range(len(i)))
+    clim = pd.DataFrame(data[:, i], index=np.array([r[0] for r in results], dtype='datetime64'), columns=range(len(i)))
     st = "{0}-{1}-{2}".format(model.startyear, model.startmonth, model.startday)
     et = "{0}-{1}-{2}".format(model.endyear, model.endmonth, model.endday)
-    p = clim[st:et]
+    sw = clim.rolling('7D').mean()
+    p = sw[st:et]
+    msw = sw.groupby(pd.Grouper(freq='W')).median().reindex(sw.index, method='bfill')
+    maxsw = sw.groupby(pd.Grouper(freq='W')).max().reindex(sw.index, method='bfill')
+    minsw = sw.groupby(pd.Grouper(freq='W')).min().reindex(sw.index, method='bfill')
+    sd = pd.DataFrame(np.where(sw < msw, (sw - msw) / (msw - minsw) * 100, (sw - msw) / (maxsw - msw) * 100), sw.index).fillna(method='ffill')[st:et].values
     smdi = np.zeros(p.shape)
-    for j in clim.columns:
-        MSW = clim[j].median()
-        maxSW = clim[j].max()
-        minSW = clim[j].min()
-        SW = p[j].rolling('7D').median().values[7:]
-        SD = (SW - MSW) / (maxSW - MSW) * 100.0
-        SD[SD == 0.0] = (SW[SD == 0.0] - MSW) / (MSW - minSW) * 100.0
-        smdi[:7, j] = SD[:7] / 50.0
-        smdi[7:, j] = 0.5 * smdi[6:-1, j] + SD / 50.0
+    smdi[0, :] = sd[0, :] / 50
+    for t in range(1,smdi.shape[0]):
+        smdi[t,:] = 0.5*smdi[t-1, :] + sd[t,:] / 50
     cur.close()
     db.close()
     smdi = np.clip(smdi, -4.0, 4.0)
