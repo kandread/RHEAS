@@ -129,7 +129,7 @@ def _calcFpar(model, ensemble):
         equery = ""
     db = dbio.connect(model.dbname)
     cur = db.cursor()
-    sql = "select fdate,(ST_DumpValues(rast)).valarray from {0}.par {1} order by fdate".format(model.name, equery)
+    sql = "select fdate,(ST_DumpValues(ST_UNION(rast,1))).valarray from {0}.par {1} group by fdate order by fdate".format(model.name, equery)
     cur.execute(sql)
     if bool(cur.rowcount):
         results = cur.fetchall()
@@ -199,7 +199,8 @@ def calcSRI(duration, model, ensemble):
     else:
         db = dbio.connect(model.dbname)
         cur = db.cursor()
-        sql = "select fdate,(ST_DumpValues(rast)).valarray from {0}.runoff where fdate>=date'{1}' and fdate<=date'{2}' {3} order by fdate".format(model.name, dstartdate.strftime("%Y-%m-%d"), enddate.strftime("%Y-%m-%d"), equery)
+        sql = "select fdate,(ST_DumpValues(ST_UNION(rast,1))).valarray from {0}.runoff where fdate>=date'{1}' and fdate<=date'{2}' {3} group by fdate order by fdate".format(model.name, dstartdate.strftime("%Y-%m-%d"), enddate.strftime("%Y-%m-%d"), equery)
+        #sql = "select fdate,(ST_DumpValues(rast)).valarray from {0}.runoff where fdate>=date'{1}' and fdate<=date'{2}' {3} order by fdate".format(model.name, dstartdate.strftime("%Y-%m-%d"), enddate.strftime("%Y-%m-%d"), equery)
         cur.execute(sql)
         results = cur.fetchall()
         data = np.array([np.array(r[1]).ravel() for r in results])
@@ -241,7 +242,8 @@ def calcSPI(duration, model, ensemble):
         log.warning("Cannot calculate SPI with {0} months duration.".format(duration))
         spi = None
     else:
-        sql = "select fdate,(ST_DumpValues(rast)).valarray from {0}.rainf where fdate>=date'{1}' and fdate<=date'{2}' {3} order by fdate".format(model.name, dstartdate.strftime("%Y-%m-%d"), enddate.strftime("%Y-%m-%d"), equery)
+        sql = "select fdate,(ST_DumpValues(ST_UNION(rast,1))).valarray from {0}.rainf where fdate>=date'{1}' and fdate<=date'{2}' {3} group by fdate order by fdate".format(model.name, dstartdate.strftime("%Y-%m-%d"), enddate.strftime("%Y-%m-%d"), equery)
+        #sql = "select fdate,(ST_DumpValues(rast)).valarray from {0}.rainf where fdate>=date'{1}' and fdate<=date'{2}' {3} order by fdate".format(model.name, dstartdate.strftime("%Y-%m-%d"), enddate.strftime("%Y-%m-%d"), equery)
         cur.execute(sql)
         results = cur.fetchall()
         data = np.array([np.array(r[1]).ravel() for r in results])
@@ -270,7 +272,8 @@ def calcSeverity(model, ensemble, varname="soil_moist"):
     if varname == "soil_moist":
         sql = "select fdate,(ST_DumpValues(st_union(rast,'sum'))).valarray from {0}.soil_moist {1} group by fdate order by fdate".format(model.name, equery)
     else:
-        sql = "select fdate,(ST_DumpValues(rast)).valarray from {0}.runoff {1} order by fdate".format(model.name, equery)
+        sql = "select fdate,(ST_DumpValues(ST_UNION(rast,1))).valarray from {0}.runoff {1} group by fdate order by fdate".format(model.name, equery)
+        #sql = "select fdate,(ST_DumpValues(rast)).valarray from {0}.runoff {1} order by fdate".format(model.name, equery)
     cur.execute(sql)
     results = cur.fetchall()
     data = np.array([np.array(r[1]).ravel() for r in results])
@@ -295,7 +298,7 @@ def calcDrySpells(model, ensemble, droughtfun=np.mean, duration=14, recovduratio
         equery = ""
     db = dbio.connect(model.dbname)
     cur = db.cursor()
-    sql = "select fdate,(ST_DumpValues(rast)).valarray from {0}.rainf where fdate>=date'{1}-{2}-{3}' and fdate<=date'{4}-{5}-{6}' {7} order by fdate".format(model.name, model.startyear, model.startmonth, model.startday, model.endyear, model.endmonth, model.endday, equery)
+    sql = "select fdate,(ST_DumpValues(ST_UNION(rast,1))).valarray from {0}.rainf where fdate>=date'{1}-{2}-{3}' and fdate<=date'{4}-{5}-{6}' {7} group by fdate order by fdate".format(model.name, model.startyear, model.startmonth, model.startday, model.endyear, model.endmonth, model.endday, equery)
     cur.execute(sql)
     results = cur.fetchall()
     data = np.array([np.array(r[1]).ravel() for r in results])
@@ -327,7 +330,7 @@ def calcSMDI(model, ensemble):
         equery = ""
     db = dbio.connect(model.dbname)
     cur = db.cursor()
-    sql = "select fdate,(ST_DumpValues(rast)).valarray from {0}.soil_moist where layer=2 {1} order by fdate".format(model.name, equery)
+    sql = "select fdate,(ST_DumpValues(ST_UNION(rast,1))).valarray from {0}.soil_moist where layer=2 {1} group by fdate order by fdate".format(model.name, equery)
     cur.execute(sql)
     results = cur.fetchall()
     data = np.array([np.array(r[1]).ravel() for r in results])

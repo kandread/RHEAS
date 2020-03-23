@@ -76,7 +76,7 @@ def runDeterministicVIC(dbname, options):
     model.writeForcings(prec, tmax, tmin, wind)
     model.run(vicexe)
     model.save(saveto, savevars)
-    shutil.rmtree(path)
+    #shutil.rmtree(path)
 
 
 def runEnsembleVIC(dbname, options):
@@ -188,7 +188,7 @@ def runDSSAT(dbname, options):
             model = mod.Model(dbname, name, res, startyear, startmonth, startday,
                               endyear, endmonth, endday, nens, options['vic'], shapefile, assimilate)
             model.run()
-            shutil.rmtree(model.path)
+            #shutil.rmtree(model.path)
 
 
 def execute(dbname, options):

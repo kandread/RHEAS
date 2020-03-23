@@ -1,4 +1,4 @@
-""" Class definition for the DSSAT maize interface
+""" Class dtfinition for the DSSAT maize interface
 
 .. module:: dssat
    :synopsis: Definition of the DSSAT maize class
@@ -171,8 +171,9 @@ class Model(DSSAT):
         self.cultivars[gid] = []
         for ens in range(self.nens):
             sm = vsm[ens]
-            fertilizers = [(planting, "005", "001", 1.0, 60.0), (planting+timedelta(30), "005", "001", 1.0, 70.0), (planting+timedelta(45), "005", "001", 1.0, 80.0)] if fertilizers is None else fertilizers
-            irrigation = [(startdate, 0.0)] if irrigation is None else irrigation
+            #fertilizers = [(planting, "005", "001", 1.0, 60.0), (planting+timedelta(30), "005", "001", 1.0, 70.0), (planting+timedelta(45), "005", "001", 1.0, 80.0)] if fertilizers is None else fertilizers
+            fertilizers = [(planting, "005", "001", 1.0, 30.00),(planting+timedelta(30), "005", "001", 1.0,20.0)] if fertilizers is None else fertilizers
+	    irrigation = [(startdate, 0.0)] if irrigation is None else irrigation
             prof = profiles[ens].split("\r\n")
             dz = map(lambda ln: float(ln.split()[0]), profiles[ens].split("\n")[3:-1])
             smi = self.interpolateSoilMoist(sm, depths, dz)

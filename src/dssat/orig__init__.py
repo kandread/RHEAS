@@ -213,7 +213,6 @@ class DSSAT(object):
                     sm[e][:, l] = [m for mi, m in enumerate(
                         data["soil_moist"][e]) if layers[mi] == l + 1]
         else:
-            # run fails here if any of the VIC output has None  
             weather = np.vstack(
                 (data["net_short"] - data["net_long"], data["tmax"], data["tmin"], data["rainf"])).T
             if self.lai is not None:
@@ -434,14 +433,14 @@ class DSSAT(object):
         # FIXME: instead of 180 days perhaps use information from harvest dates to define the simulation end date?
         harvest_days = 180
         # we will start the simulation 7 days before the first planting date if possible
-        simstartdt = planting[0] - timedelta(7)
+        simstartdt = planting[0] - timedelta(50)#!!!CHNAGED from 7 to 50
         year, month, day, weather, sm, vlai = self.readVICOutput(gid, depths, simstartdt, planting[-1] + timedelta(harvest_days))
         vicstartdt = date(year[0], month[0], day[0])
         for pi, pdt in enumerate(planting):
             if (pdt - vicstartdt).days < 0:
                 log.warning("Cannot perform simulation for planting date {0}. Earliest available VIC output is on {1}".format(pdt.strftime("%Y-%m-%d"), vicstartdt.strftime("%Y-%m-%d")))
             else:
-                simstartdt = max(vicstartdt, pdt - timedelta(7))
+                simstartdt = max(vicstartdt, pdt - timedelta(50))#!!!CHNAGED from 7 to 50 
                 self.copyModelFiles(geom, pi, dssatexe)
                 modelpath = self.modelpaths[(gid, pi)]
                 self.modelstart[(gid, pi)] = simstartdt
@@ -477,69 +476,13 @@ class DSSAT(object):
         log.debug(out)
 
     def save(self):
-	# this section saves the dssat output at each date (includes fdate - old version)        
-	# every run it deletes the old schema of the same name is present 
-        # does not add new data to already present schema
-        """Saves DSSAT output to database."""
-        print('I am here......')
-        db = dbio.connect(self.dbname)
-        cur = db.cursor()
-        cur.execute("select * from information_schema.tables where table_name = 'dssat_all' and table_schema= '{0}'".format(self.name))
-        #cur.execute("DROP TABLE IF EXISTS {0}.dssat_all".format(self.name))
-        if not bool(cur.rowcount):
-            cur.execute("create table {0}.dssat_all (id serial primary key, gid int, ensemble int, fdate date, wsgd real, lai real, gwad real, geom geometry, CONSTRAINT enforce_dims_geom CHECK (st_ndims(geom) = 2), CONSTRAINT enforce_geotype_geom CHECK (geometrytype(geom) = 'POLYGON'::text OR geometrytype(geom) = 'MULTIPOLYGON'::text OR geom IS NULL))".format(self.name))
-            db.commit()
-            print('creating new DSSAT_ALL table')
-	# overwrite overlapping dates
-        cur.execute("delete from {0}.dssat_all where fdate>=date'{1}-{2}-{3}' and fdate<=date'{4}-{5}-{6}'".format(self.name, self.startyear, self.startmonth, self.startday, self.endyear, self.endmonth, self.endday))
-        sql = "insert into {0}.dssat_all (fdate, gid, ensemble, gwad, wsgd, lai) values (%(dt)s, %(gid)s, %(ens)s, %(gwad)s, %(wsgd)s, %(lai)s)".format(self.name)
-        for gid, pi in self.modelpaths:
-            modelpath = self.modelpaths[(gid, pi)]
-            startdt = self.modelstart[(gid, pi)]
-            for e in range(self.nens):
-                with open("{0}/PLANTGRO{1:03d}.OUT".format(modelpath, e + 1)) as fin:
-                    line = fin.readline()
-                    while line.find("YEAR") < 0:
-                        line = fin.readline()
-                    for line in fin:
-                        data = line.split()
-                        dt = date(int(data[0]), 1, 1) + \
-                            timedelta(int(data[1]) - 1)
-                        dts = "{0}-{1}-{2}".format(dt.year, dt.month, dt.day)
-                        if self.cultivars[gid][e] is None:
-                            cultivar = ""
-                        else:
-                            cultivar = self.cultivars[gid][e]
-                        # changed on Mar, 09, 2020 to save data at all dates 
-                        #if float(data[9]) > 0.0:
-                        print(dts, data[9], data[18], data[6])
-                        cur.execute(sql, {'dt': dts, 'ens': e + 1, 'gwad': float(
-                            data[9]), 'wsgd': float(data[18]), 'lai': float(data[6]), 'gid': gid, 'cultivar': cultivar})
-        cur.execute(
-            "update {0}.dssat_all as d set geom = a.geom from {0}.agareas as a where a.gid=d.gid".format(self.name))
-        db.commit()
-        cur.execute("drop index if exists {0}.d_t".format(self.name))
-        cur.execute("drop index if exists {0}.d_s".format(self.name))
-        cur.execute(
-            "create index d_t on {0}.dssat_all(fdate)".format(self.name))
-        cur.execute(
-            "create index d_s on {0}.dssat_all using gist(geom)".format(self.name))
-        db.commit()
-        cur.close()
-        db.close()
-        #self.yieldTable()
-
-
-	# this section only saves the values at harvest date
-	# Modiofied schema to include county name and code ** attribute names are hard coded **
-	
         """Saves DSSAT output to database."""
         db = dbio.connect(self.dbname)
         cur = db.cursor()
         cur.execute(
             "select * from information_schema.tables where table_name='dssat' and table_schema='{0}'".format(self.name))
         if not bool(cur.rowcount):
-            cur.execute("create table {0}.dssat (id serial primary key, gid int, cname varchar(50), ccode varchar(6), ensemble int, harvest date, planting date, wsgd real, lai real, gwad real, geom geometry, CONSTRAINT enforce_dims_geom CHECK (st_ndims(geom) = 2), CONSTRAINT enforce_geotype_geom CHECK (geometrytype(geom) = 'POLYGON'::text OR geometrytype(geom) = 'MULTIPOLYGON'::text OR geom IS NULL))".format(self.name))
+            cur.execute("create table {0}.dssat (id serial primary key, gid int, ensemble int, harvest date, planting date, wsgd real, lai real, gwad real, geom geometry, CONSTRAINT enforce_dims_geom CHECK (st_ndims(geom) = 2), CONSTRAINT enforce_geotype_geom CHECK (geometrytype(geom) = 'POLYGON'::text OR geometrytype(geom) = 'MULTIPOLYGON'::text OR geom IS NULL))".format(self.name))
             db.commit()
         # overwrite overlapping dates
         cur.execute("delete from {0}.dssat where planting>=date'{1}-{2}-{3}' and planting<=date'{4}-{5}-{6}'".format(self.name, self.startyear, self.startmonth, self.startday, self.endyear, self.endmonth, self.endday))
@@ -566,11 +509,7 @@ class DSSAT(object):
         cur.execute(
             "update {0}.dssat as d set geom = a.geom from {0}.agareas as a where a.gid=d.gid".format(self.name))
         db.commit()
-        cur.execute("update  {0}.dssat as d set ccode = a.countyid from {0}.agareas as a where a.gid = d.gid".format(self.name))
-	cur.execute("update  {0}.dssat as d set cname = a.county from {0}.agareas as a where a.gid = d.gid".format(self.name))
-        db.commit()
-
-	cur.execute("drop index if exists {0}.d_t".format(self.name))
+        cur.execute("drop index if exists {0}.d_t".format(self.name))
         cur.execute("drop index if exists {0}.d_s".format(self.name))
         cur.execute(
             "create index d_t on {0}.dssat(planting)".format(self.name))

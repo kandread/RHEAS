@@ -1,0 +1,3 @@
+[console_scripts]
+rheas = rheas:run
+
