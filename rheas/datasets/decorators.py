@@ -10,7 +10,7 @@
 import re
 import shutil
 import tempfile
-import urllib
+import urllib.request
 from datetime import datetime
 from ftplib import FTP
 from functools import wraps
@@ -54,8 +54,8 @@ def http(fetch):
         filename = url.format(dt.year, dt.month, dt.day)
         try:
             lfilename = filename.split("/")[-1]
-            urllib.urlcleanup()
-            urllib.urlretrieve(filename, "{0}/{1}".format(outpath, lfilename))
+            with urllib.request.urlopen(filename) as response, open("{0}/{1}".format(outpath, lfilename), 'wb') as fout:
+                shutil.copyfileobj(response, fout)
         except:
             lfilename = None
         return outpath, lfilename, bbox, dt
