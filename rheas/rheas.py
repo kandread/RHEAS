@@ -10,6 +10,9 @@
 import argparse
 import logging
 from datetime import datetime
+from importlib import import_module
+
+from . import config, datasets, dbio, forecast, nowcast
 
 
 def parseArgs():
@@ -35,8 +38,8 @@ def update(dbname, configfile):
     for name in conf.sections():
         if name != 'domain':
             try:
-                mod = __import__("datasets.{0}".format(name), fromlist=[name])
-            except:
+                mod = import_module("rheas.datasets.{0}".format(name))
+            except ModuleNotFoundError:
                 mod = None
             if conf.has_option(name, 'startdate'):
                 t0 = datetime.strptime(conf.get(name, 'startdate'), "%Y-%m-%d")
@@ -80,3 +83,14 @@ def run():
     if dbname is None:
         dbname = "rheas"
     dbio.connect(dbname)
+    # check if database update is requested
+    if db_update:
+        log.info("Updating database!")
+        update(dbname, config_filename)
+    else:
+        options = config.loadFromFile(config_filename)
+        # check what simulations have been requested
+        if "nowcast" in options:
+            nowcast.execute(dbname, options)
+        if "forecast" in options:
+            forecast.execute(dbname, options)
