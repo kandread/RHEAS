@@ -8,10 +8,14 @@ temperature from the NCEP Reanalysis stored at the IRI Data Library.
 
 """
 
-import numpy as np
-from . import datasets
-from decorators import netcdf
 from datetime import timedelta
+
+import numpy as np
+
+from . import datasets
+from .decorators import netcdf
+
+table = ["tmax.ncep", "tmin.ncep", "wind.ncep"]
 
 
 def dates(dbname):

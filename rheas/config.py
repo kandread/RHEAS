@@ -12,7 +12,6 @@ import os
 import re
 import sys
 from configparser import ConfigParser
-from io import StringIO
 
 
 def _readFromFile(config_filename):
@@ -52,7 +51,7 @@ def _checkOptions(options):
             simtype))
         sys.exit()
     if 'resolution' in options[simtype]:
-        res = options[simtype]['resolution']
+        res = getResolution(options[simtype])
         if res < 0:
             log.error("Bad value for spatial resolution ({0}). Exiting...".format(res))
             sys.exit()
