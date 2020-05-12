@@ -125,12 +125,11 @@ def getVICvariables(options):
     if 'save to' in options['vic']:
         saveto = options['vic']['save to']
         if 'save' in options['vic']:
-            savevars = map(lambda s: s.strip(), options[
-                           'vic']['save'].split(","))
+            savevars = [s.strip() for s in options['vic']['save'].split(',')]
         else:
             savevars = []
         simtype = [k for k in options if k == 'nowcast' or k == 'forecast'][0]
-        models = map(lambda s: s.strip(), options[simtype]['model'].split(","))
+        models = [s.strip() for s in options[simtype]['model'].split(",")]
         if 'dssat' in models:
             for v in ['rainf', 'net_short', 'net_long', 'soil_moist', 'tmax', 'tmin']:
                 if v not in savevars:
