@@ -30,7 +30,7 @@ def runVIC(dbname, options):
         log.warning("Forecast with lead time longer than 6 months requested. Exiting...")
         sys.exit()
     res = config.getResolution(options['forecast'])
-    vicexe = os.path.abspath("../external/vic/src/vicNl")
+    vicexe = config.getVICExecutable(options)
     basin = config.getBasinFile(options['forecast'])
     saveto, savevars = config.getVICvariables(options)
     name = options['forecast']['name'].lower()

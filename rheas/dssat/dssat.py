@@ -47,7 +47,7 @@ class DSSAT(object):
         self.nens = nens
         self.shapefile = shapefile
         self.assimilate = assimilate
-        self.data_path = os.path.abspath("../../data")
+        self.data_path = os.path.dirname(os.path.abspath(__file__)) + "/../../data"
         self.modelpaths = {}
         self.modelstart = {}
         self.grid_decimal = - (decimal.Decimal(str(self.res)).as_tuple().exponent - 1)
@@ -419,7 +419,8 @@ class DSSAT(object):
         self.modelpaths[(gid, pi)] = modelpath
         os.mkdir(modelpath)
         os.mkdir(modelpath + "/ENKF_Results")
-        shutil.copyfile("{0}/{1}".format(os.path.abspath("../../external/dssat"), dssatexe), "{0}/{1}".format(modelpath, dssatexe))
+        dssatpath = os.path.dirname(os.path.abspath(__file__)) + "/../../external/dssat"
+        shutil.copyfile("{0}/{1}".format(dssatpath, dssatexe), "{0}/{1}".format(modelpath, dssatexe))
         distutils.dir_util.copy_tree("{0}/dssat".format(self.data_path), modelpath)
 
     def setupModelInstance(self, geom, dssatexe):

@@ -37,7 +37,7 @@ class VIC:
                  endyear, endmonth, endday, name="", savestate="", nlayer=3):
         log = logging.getLogger(__name__)
         self.model_path = path
-        self.data_path = os.path.abspath("../../data")
+        self.data_path = os.path.dirname(os.path.abspath(__file__)) + "/../../data"
         self.nodata = -9999.
         if bool(name):
             self.name = name

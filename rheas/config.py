@@ -101,10 +101,7 @@ def getVICExecutable(options):
     if 'exe' in options:
         vicexe = options['exe']
     else:
-        if os.path.abspath(os.getcwd()).find("bin") >= 0:
-            vicexe = "{0}/vicNl".format(os.path.abspath(os.getcwd()))
-        else:
-            vicexe = "{0}/bin/vicNl".format(os.path.abspath(os.getcwd()))
+        vicexe = os.path.dirname(os.path.abspath(__file__)) + "/../external/vic/src/vicNl"
     return vicexe
 
 

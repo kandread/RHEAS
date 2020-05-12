@@ -53,7 +53,7 @@ def _initialize(vicoptions):
 def runDeterministicVIC(dbname, options):
     """Driver function for performing a deterministic VIC nowcast simulation."""
     res = config.getResolution(options['nowcast'])
-    vicexe = os.path.abspath("../external/vic/src/vicNl")
+    vicexe = config.getVICExecutable(options)
     basin = config.getBasinFile(options['nowcast'])
     saveto, savevars = config.getVICvariables(options)
     startyear, startmonth, startday = map(
@@ -80,7 +80,7 @@ def runEnsembleVIC(dbname, options):
     """Driver function for performing a VIC nowcast simulation."""
     res = config.getResolution(options['nowcast'])
     name = options['nowcast']['name'].lower()
-    vicexe = os.path.abspath("../external/vic/src/vicNl")
+    vicexe = config.getVICExecutable(options)
     basin = config.getBasinFile(options['nowcast'])
     saveto, savevars = config.getVICvariables(options)
     startyear, startmonth, startday = map(
