@@ -449,8 +449,9 @@ class VIC:
         if not os.path.exists(self.model_path + '/output'):
             os.mkdir(self.model_path + '/output')
         proc = subprocess.Popen([vicexec, "-g", "{0}/global.txt".format(self.model_path)], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-        for line in iter(proc.stdout.readline, ''):
-            log.debug(line.strip())
+        with proc.stdout:
+            for line in iter(proc.stdout.readline, b''):
+                log.debug(line.strip())
 
     def getOutputStruct(self, globalfile):
         """Creates a dictionary with output variable-file pairs."""
@@ -487,14 +488,14 @@ class VIC:
         layervars = ["soil_moist", "soil_temp", "smliqfrac", "smfrozfrac"]
         outvars = self.getOutputStruct(self.model_path + "/global.txt")
         outdata = {}
-        if len(self.lat) > 0 and len(self.lon) > 0:
+        if self.lat and self.lon:
             nrows = int(np.round((max(self.lat) - min(self.lat)) / self.res) + 1)
             ncols = int(np.round((max(self.lon) - min(self.lon)) / self.res) + 1)
             mask = np.zeros((nrows, ncols), dtype='bool')
             nt = (date(self.endyear, self.endmonth, self.endday) -
                   date(self.startyear + self.skipyear, self.startmonth, self.startday)).days + 1
             args = vicoutput.variableGroup(args)
-            if len(args) > 0:
+            if args:
                 for var in args:
                     if var in outvars or var in droughtvars:
                         if var in layervars:
@@ -588,8 +589,10 @@ class VIC:
                 tiffiles.append(filename)
         cmd = " ".join(["raster2pgsql", "-s", "4326", "-F", "-d", "-t", "auto"] + tiffiles + ["temp", "|", "psql", "-d", self.dbname])
         proc = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-        sout, err = proc.communicate()
-        log.debug(sout)
+        with proc.stdout:
+            for line in iter(proc.stdout.readline, b''):
+                log.debug(line.strip())
+        proc.wait()
         cur.execute("alter table temp add column fdate date")
         cur.execute("update temp set fdate = date (concat_ws('-',substring(filename from {0} for 4),substring(filename from {1} for 2),substring(filename from {2} for 2)))".format(
             len(tablename) + 2, len(tablename) + 6, len(tablename) + 8))
