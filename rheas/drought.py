@@ -342,7 +342,8 @@ def calcSMDI(model, ensemble):
     msw = sw.groupby(pd.Grouper(freq='W')).median().reindex(sw.index, method='bfill')
     maxsw = sw.groupby(pd.Grouper(freq='W')).max().reindex(sw.index, method='bfill')
     minsw = sw.groupby(pd.Grouper(freq='W')).min().reindex(sw.index, method='bfill')
-    sd = pd.DataFrame(np.where(sw < msw, (sw - msw) / (msw - minsw) * 100, (sw - msw) / (maxsw - msw) * 100), sw.index).fillna(method='ffill')[st:et].values
+    sd = pd.DataFrame(np.where(sw < msw, (sw - msw) / (msw - minsw) * 100, (sw - msw) / (maxsw - msw) * 100), sw.index).fillna(method='ffill')
+    sd = sd.fillna(0.0)[st:et].values
     smdi = np.zeros(p.shape)
     smdi[0, :] = sd[0, :] / 50
     for t in range(1,smdi.shape[0]):
